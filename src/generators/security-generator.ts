@@ -1,13 +1,27 @@
 import type { ProjectAnalysis } from '../types/index.js';
 
 export class SecurityGenerator {
-  generateSecuritySetup(analysis: ProjectAnalysis): Record<string, string> {
+  generateSecuritySetup(
+    analysis: ProjectAnalysis,
+    config?: {
+      awsAccountId?: string;
+      awsRegion?: string;
+      clusterName?: string;
+      slackWebhookUrl?: string;
+    }
+  ): Record<string, string> {
     const projectName = analysis.projectName.toLowerCase();
+
+    // Use config values or environment variable placeholders
+    const awsAccountId = config?.awsAccountId || '${AWS_ACCOUNT_ID}';
+    const awsRegion = config?.awsRegion || '${AWS_REGION}';
+    const clusterName = config?.clusterName || `${projectName}-cluster`;
+    const slackWebhookUrl = config?.slackWebhookUrl || '${SLACK_WEBHOOK_URL}';
 
     return {
       // Container Security Scanning
       'security/trivy/install.sh': this.generateTrivyInstall(),
-      'security/trivy/scan-images.sh': this.generateTrivyScanScript(analysis),
+      'security/trivy/scan-images.sh': this.generateTrivyScanScript(analysis, awsAccountId, awsRegion),
       'security/trivy/trivy-config.yaml': this.generateTrivyConfig(),
 
       // Secret Detection
@@ -16,11 +30,11 @@ export class SecurityGenerator {
 
       // Secret Management
       'security/secrets/vault-setup.yaml': this.generateVaultSetup(projectName),
-      'security/secrets/external-secrets.yaml': this.generateExternalSecrets(analysis, projectName),
+      'security/secrets/external-secrets.yaml': this.generateExternalSecrets(analysis, projectName, awsRegion),
       'security/secrets/sealed-secrets.yaml': this.generateSealedSecrets(projectName),
 
       // Runtime Security (Falco)
-      'security/runtime/falco-values.yaml': this.generateFalcoValues(projectName),
+      'security/runtime/falco-values.yaml': this.generateFalcoValues(projectName, slackWebhookUrl),
       'security/runtime/falco-rules.yaml': this.generateFalcoRules(analysis, projectName),
       'security/runtime/install-falco.sh': this.generateFalcoInstall(),
 
@@ -35,10 +49,10 @@ export class SecurityGenerator {
 
       // RBAC Hardening
       'security/rbac/roles.yaml': this.generateRBACRoles(analysis, projectName),
-      'security/rbac/service-accounts.yaml': this.generateSecureServiceAccounts(analysis, projectName),
+      'security/rbac/service-accounts.yaml': this.generateSecureServiceAccounts(analysis, projectName, awsAccountId),
 
       // Backup & DR
-      'security/backup/velero-install.sh': this.generateVeleroInstall(),
+      'security/backup/velero-install.sh': this.generateVeleroInstall(awsRegion, clusterName),
       'security/backup/backup-schedule.yaml': this.generateBackupSchedule(projectName),
       'security/backup/restore.sh': this.generateRestoreScript(projectName),
 
@@ -62,25 +76,40 @@ set -e
 echo "Installing Trivy..."
 
 # Install Trivy
-wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
-echo "deb https://aquasecurity.github.io/trivy-repo/deb \$(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
-sudo apt-get update
-sudo apt-get install -y trivy
+wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add - || {
+    echo "❌ Failed to download Trivy GPG key"
+    exit 1
+}
+echo "deb https://aquasecurity.github.io/trivy-repo/deb \$(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list || {
+    echo "❌ Failed to add Trivy repository"
+    exit 1
+}
+sudo apt-get update || {
+    echo "❌ Failed to update package lists"
+    exit 1
+}
+sudo apt-get install -y trivy || {
+    echo "❌ Failed to install Trivy"
+    exit 1
+}
 
 # Verify installation
-trivy --version
+trivy --version || {
+    echo "❌ Trivy installation verification failed"
+    exit 1
+}
 
 echo "✅ Trivy installed successfully!"
 `;
   }
 
-  private generateTrivyScanScript(analysis: ProjectAnalysis): string {
+  private generateTrivyScanScript(analysis: ProjectAnalysis, awsAccountId: string, awsRegion: string): string {
     return `#!/bin/bash
 set -e
 
 echo "🔍 Scanning container images for vulnerabilities..."
 
-ECR_REGISTRY="\${AWS_ACCOUNT_ID}.dkr.ecr.\${AWS_REGION}.amazonaws.com"
+ECR_REGISTRY="${awsAccountId}.dkr.ecr.${awsRegion}.amazonaws.com"
 
 # Scan all service images
 ${analysis.services.map(service => `
@@ -155,9 +184,18 @@ echo "🔍 Scanning for secrets in repository..."
 # Install GitLeaks if not present
 if ! command -v gitleaks &> /dev/null; then
     echo "Installing GitLeaks..."
-    wget https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_linux_x64.tar.gz
-    tar -xzf gitleaks_linux_x64.tar.gz
-    sudo mv gitleaks /usr/local/bin/
+    wget https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_linux_x64.tar.gz || {
+        echo "❌ Failed to download GitLeaks"
+        exit 1
+    }
+    tar -xzf gitleaks_linux_x64.tar.gz || {
+        echo "❌ Failed to extract GitLeaks"
+        exit 1
+    }
+    sudo mv gitleaks /usr/local/bin/ || {
+        echo "❌ Failed to install GitLeaks"
+        exit 1
+    }
     rm gitleaks_linux_x64.tar.gz
 fi
 
@@ -217,7 +255,7 @@ spec:
 `;
   }
 
-  private generateExternalSecrets(analysis: ProjectAnalysis, projectName: string): string {
+  private generateExternalSecrets(analysis: ProjectAnalysis, projectName: string, awsRegion: string): string {
     return `# External Secrets Operator - Sync secrets from AWS Secrets Manager
 apiVersion: v1
 kind: Namespace
@@ -233,7 +271,7 @@ spec:
   provider:
     aws:
       service: SecretsManager
-      region: \${AWS_REGION}
+      region: ${awsRegion}
       auth:
         jwt:
           serviceAccountRef:
@@ -294,7 +332,7 @@ spec:
 `;
   }
 
-  private generateFalcoValues(projectName: string): string {
+  private generateFalcoValues(projectName: string, slackWebhookUrl: string): string {
     return `# Falco - Runtime security monitoring
 falco:
   enabled: true
@@ -315,7 +353,7 @@ falco:
   # Slack integration
   slack:
     enabled: true
-    webhook_url: \${SLACK_WEBHOOK_URL}
+    webhook_url: ${slackWebhookUrl}
 
   # File output
   file_output:
@@ -329,7 +367,7 @@ falcosidekick:
 
   config:
     slack:
-      webhookurl: \${SLACK_WEBHOOK_URL}
+      webhookurl: ${slackWebhookUrl}
       channel: "#${projectName}-security-alerts"
       minimumpriority: warning
 
@@ -347,10 +385,11 @@ customRules:
       condition: >
         spawned_process and
         container and
-        not proc.name in (node, java, python, go)
+        not proc.name in (node, java, python, go, sh, bash, curl, wget, npm, yarn, git, tar, gzip, ps, ls, cat, grep, awk, sed) and
+        not proc.pname in (node, java, python, go, npm, yarn)
       output: >
         Unauthorized process started (user=%user.name container=%container.name
-        process=%proc.cmdline)
+        process=%proc.cmdline parent=%proc.pname)
       priority: WARNING
 `;
   }
@@ -544,11 +583,13 @@ spec:
           kinds:
             - Pod
       validate:
-        message: "Using 'latest' tag is not allowed"
-        pattern:
-          spec:
-            containers:
-              - image: "!*:latest"
+        message: "Using 'latest' tag is not allowed. Please use a specific version tag."
+        deny:
+          conditions:
+            any:
+              - key: "{{ images.containers.*.tag }}"
+                operator: Equals
+                value: "latest"
 `;
   }
 
@@ -581,11 +622,29 @@ deny[msg] {
 }
 
 # Require image from trusted registry
+# TODO: Replace with your actual trusted registries (ECR, Docker Hub private, etc.)
+trusted_registries := [
+  # Example ECR registries - replace with your actual values
+  # "123456789012.dkr.ecr.us-east-1.amazonaws.com",
+  # "123456789012.dkr.ecr.us-west-2.amazonaws.com",
+  # Example Docker Hub private registry
+  # "registry.hub.docker.com/yourorg",
+  # Example Google Container Registry
+  # "gcr.io/your-project"
+]
+
+registry_is_trusted(image) {
+  registry := trusted_registries[_]
+  startswith(image, registry)
+}
+
 deny[msg] {
   input.request.kind.kind == "Pod"
   container := input.request.object.spec.containers[_]
-  not startswith(container.image, "YOUR_ECR_REGISTRY")
-  msg := sprintf("Container %v must use images from trusted registry", [container.name])
+  # Only enforce if trusted_registries is configured (not empty)
+  count(trusted_registries) > 0
+  not registry_is_trusted(container.image)
+  msg := sprintf("Container %v must use images from trusted registry. Allowed: %v", [container.name, trusted_registries])
 }
 `;
   }
@@ -646,15 +705,23 @@ spec:
       ports:
         - protocol: UDP
           port: 53
-    # Allow to other services
+    # Allow to other services in same namespace
     - to:
         - podSelector: {}
-    # Allow to internet (remove for stricter policy)
-    - to:
-        - namespaceSelector: {}
       ports:
         - protocol: TCP
-          port: 443
+          port: ${service.port || 8080}
+    # Allow HTTPS egress to internet (optional - comment out for stricter policy)
+    # WARNING: This allows egress to any external service on port 443
+    # For production, replace with specific external service IPs/domains
+    # - to:
+    #     - ipBlock:
+    #         cidr: 0.0.0.0/0
+    #         except:
+    #           - 169.254.169.254/32  # Block AWS metadata service
+    #   ports:
+    #     - protocol: TCP
+    #       port: 443
 `).join('\n')}
 
 ---
@@ -780,7 +847,7 @@ roleRef:
 `;
   }
 
-  private generateSecureServiceAccounts(analysis: ProjectAnalysis, projectName: string): string {
+  private generateSecureServiceAccounts(analysis: ProjectAnalysis, projectName: string, awsAccountId: string): string {
     return `# Secure Service Accounts with IRSA (IAM Roles for Service Accounts)
 ${analysis.services.map(service => `---
 apiVersion: v1
@@ -790,7 +857,7 @@ metadata:
   namespace: ${projectName}
   annotations:
     # AWS IAM role for this service
-    eks.amazonaws.com/role-arn: arn:aws:iam::\${AWS_ACCOUNT_ID}:role/${projectName}-${service.name}
+    eks.amazonaws.com/role-arn: arn:aws:iam::${awsAccountId}:role/${projectName}-${service.name}
 automountServiceAccountToken: false  # Don't auto-mount tokens
 
 ---
@@ -807,30 +874,45 @@ type: kubernetes.io/service-account-token
 `;
   }
 
-  private generateVeleroInstall(): string {
+  private generateVeleroInstall(awsRegion: string, clusterName: string): string {
     return `#!/bin/bash
 set -e
 
 echo "Installing Velero for backup and disaster recovery..."
 
 # Install Velero CLI
-wget https://github.com/vmware-tanzu/velero/releases/latest/download/velero-linux-amd64.tar.gz
-tar -xvf velero-linux-amd64.tar.gz
-sudo mv velero-*/velero /usr/local/bin/
+wget https://github.com/vmware-tanzu/velero/releases/latest/download/velero-linux-amd64.tar.gz || {
+    echo "❌ Failed to download Velero"
+    exit 1
+}
+tar -xvf velero-linux-amd64.tar.gz || {
+    echo "❌ Failed to extract Velero"
+    exit 1
+}
+sudo mv velero-*/velero /usr/local/bin/ || {
+    echo "❌ Failed to install Velero"
+    exit 1
+}
 rm -rf velero-*
 
 # Create S3 bucket for backups
-aws s3 mb s3://\${CLUSTER_NAME}-velero-backups --region \${AWS_REGION}
+aws s3 mb s3://${clusterName}-velero-backups --region ${awsRegion} || {
+    echo "❌ Failed to create S3 bucket for backups"
+    exit 1
+}
 
 # Install Velero with AWS plugin
 velero install \\
   --provider aws \\
   --plugins velero/velero-plugin-for-aws:v1.8.0 \\
-  --bucket \${CLUSTER_NAME}-velero-backups \\
-  --backup-location-config region=\${AWS_REGION} \\
-  --snapshot-location-config region=\${AWS_REGION} \\
+  --bucket ${clusterName}-velero-backups \\
+  --backup-location-config region=${awsRegion} \\
+  --snapshot-location-config region=${awsRegion} \\
   --use-node-agent \\
-  --use-volume-snapshots=true
+  --use-volume-snapshots=true || {
+    echo "❌ Failed to install Velero with AWS plugin"
+    exit 1
+}
 
 echo "✅ Velero installed successfully!"
 `;
