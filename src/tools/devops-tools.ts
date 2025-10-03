@@ -9,6 +9,7 @@ import { HelmGenerator } from '../generators/helm-generator.js';
 import { ArgoCDGenerator } from '../generators/argocd-generator.js';
 import { MonitoringGenerator } from '../generators/monitoring-generator.js';
 import { AnsibleGenerator } from '../generators/ansible-generator.js';
+import { SecurityGenerator } from '../generators/security-generator.js';
 import type { DevOpsConfig, ToolResponse } from '../types/index.js';
 
 export class DevOpsTools {
@@ -21,6 +22,7 @@ export class DevOpsTools {
   private argoCDGenerator = new ArgoCDGenerator();
   private monitoringGenerator = new MonitoringGenerator();
   private ansibleGenerator = new AnsibleGenerator();
+  private securityGenerator = new SecurityGenerator();
 
   async analyzeProject(projectPath: string): Promise<ToolResponse> {
     try {
@@ -132,6 +134,9 @@ export class DevOpsTools {
         config.awsRegion || 'us-east-1'
       );
 
+      // NEW: Generate Security setup (Trivy, Falco, Kyverno, Velero)
+      const securityFiles = this.securityGenerator.generateSecuritySetup(analysis);
+
       // Create output directories
       await mkdir(outputDir, { recursive: true });
       await mkdir(join(outputDir, 'k8s'), { recursive: true });
@@ -141,6 +146,7 @@ export class DevOpsTools {
       await mkdir(join(outputDir, 'argocd'), { recursive: true });
       await mkdir(join(outputDir, 'monitoring'), { recursive: true });
       await mkdir(join(outputDir, 'ansible'), { recursive: true });
+      await mkdir(join(outputDir, 'security'), { recursive: true });
 
       // Write Kubernetes manifests
       const k8sYaml = this.k8sGenerator.exportToYAML(k8sManifests);
@@ -189,6 +195,13 @@ export class DevOpsTools {
         await writeFile(fullPath, content);
       }
 
+      // Write Security files
+      for (const [filepath, content] of Object.entries(securityFiles)) {
+        const fullPath = join(outputDir, filepath);
+        await mkdir(join(outputDir, filepath.substring(0, filepath.lastIndexOf('/'))), { recursive: true });
+        await writeFile(fullPath, content);
+      }
+
       // Generate deployment guide
       const deploymentGuide = this.generateDeploymentGuide(analysis, resources, config);
       await writeFile(join(outputDir, 'DEPLOYMENT.md'), deploymentGuide);
@@ -209,12 +222,14 @@ export class DevOpsTools {
                 argocd: Object.keys(argoCDFiles),
                 monitoring: Object.keys(monitoringFiles),
                 ansible: Object.keys(ansibleFiles),
+                security: Object.keys(securityFiles),
                 documentation: ['DEPLOYMENT.md']
               },
               features: {
                 gitops: '✅ ArgoCD applications configured',
                 helm: `✅ ${Object.keys(helmCharts).length} Helm charts generated`,
                 monitoring: config.enableMonitoring !== false ? '✅ Prometheus & Grafana setup included' : '⏭️ Monitoring skipped',
+                security: `✅ ${Object.keys(securityFiles).length} security configurations (Trivy, Falco, Kyverno, Velero)`,
                 cicd: '✅ GitHub Actions pipelines',
                 ansible: '✅ Ansible playbooks (alternative to Terraform)',
                 infrastructure: '✅ Complete AWS/EKS setup'
