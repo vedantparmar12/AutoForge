@@ -9,6 +9,7 @@ import { HelmGenerator } from '../generators/helm-generator.js';
 import { ArgoCDGenerator } from '../generators/argocd-generator.js';
 import { MonitoringGenerator } from '../generators/monitoring-generator.js';
 import { AnsibleGenerator } from '../generators/ansible-generator.js';
+import { SecurityGenerator } from '../generators/security-generator.js';
 import type { DevOpsConfig, ToolResponse } from '../types/index.js';
 
 export class DevOpsTools {
@@ -21,6 +22,7 @@ export class DevOpsTools {
   private argoCDGenerator = new ArgoCDGenerator();
   private monitoringGenerator = new MonitoringGenerator();
   private ansibleGenerator = new AnsibleGenerator();
+  private securityGenerator = new SecurityGenerator();
 
   async analyzeProject(projectPath: string): Promise<ToolResponse> {
     try {
@@ -126,6 +128,7 @@ export class DevOpsTools {
         : {};
 
       // NEW: Generate Ansible playbooks (optional alternative)
+// NEW: Generate Security setup (Trivy, Falco, Kyverno, Velero)      const securityFiles = this.securityGenerator.generateSecuritySetup(analysis);
       const ansibleFiles = this.ansibleGenerator.generateAnsiblePlaybooks(
         analysis,
         resources,
