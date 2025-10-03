@@ -1,0 +1,52 @@
+{
+  "name": "devops-automation",
+  "version": "1.0.0",
+  "description": "Automated DevOps lifecycle creation - analyzes projects and generates complete CI/CD pipelines with AWS deployment",
+  "type": "server",
+  "capabilities": {
+    "tools": true,
+    "resources": false,
+    "prompts": false
+  },
+  "tools": [
+    {
+      "name": "analyze-project",
+      "description": "Analyzes a project to detect languages, frameworks, services, and complexity",
+      "category": "analysis"
+    },
+    {
+      "name": "calculate-resources",
+      "description": "Calculates optimal Kubernetes resources and infrastructure requirements",
+      "category": "planning"
+    },
+    {
+      "name": "generate-devops-setup",
+      "description": "Generates complete DevOps setup (Kubernetes, Terraform, CI/CD, monitoring)",
+      "category": "generation"
+    },
+    {
+      "name": "deploy-to-aws",
+      "description": "Deploys the application to AWS EKS",
+      "category": "deployment"
+    }
+  ],
+  "homepage": "https://github.com/your-org/mcp-devops-automation",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/mcp-devops-automation"
+  },
+  "keywords": [
+    "mcp",
+    "devops",
+    "automation",
+    "aws",
+    "eks",
+    "kubernetes",
+    "terraform",
+    "cicd",
+    "gitops",
+    "infrastructure-as-code"
+  ],
+  "author": "DevOps Automation Team",
+  "license": "MIT"
+}
