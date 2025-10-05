@@ -1,0 +1,75 @@
+---
+- name: Setup AWS Infrastructure
+  hosts: localhost
+  connection: local
+  gather_facts: yes
+
+  tasks:
+    - name: Get AWS account ID
+      command: aws sts get-caller-identity --query Account --output text
+      register: aws_account_output
+      changed_when: false
+
+    - name: Set AWS account ID fact
+      set_fact:
+        aws_account_id: "{{ aws_account_output.stdout }}"
+
+    - name: Create VPC
+      amazon.aws.ec2_vpc_net:
+        name: "{{ cluster_name }}-vpc"
+        cidr_block: "{{ vpc_cidr }}"
+        region: "{{ aws_region }}"
+        tags:
+          Name: "{{ cluster_name }}-vpc"
+          Project: "{{ project_name }}"
+      register: vpc
+
+    - name: Create Internet Gateway
+      amazon.aws.ec2_vpc_igw:
+        vpc_id: "{{ vpc.vpc.id }}"
+        region: "{{ aws_region }}"
+        tags:
+          Name: "{{ cluster_name }}-igw"
+      register: igw
+
+    - name: Create EKS Cluster
+      include_role:
+        name: eks-cluster
+
+    - name: Create ECR Repositories
+      include_role:
+        name: ecr-repos
+
+    - name: Update kubeconfig
+      command: >
+        aws eks update-kubeconfig
+        --name {{ cluster_name }}
+        --region {{ aws_region }}
+      changed_when: false
+
+    - name: Wait for cluster to be ready
+      command: kubectl get nodes
+      register: nodes
+      until: nodes.rc == 0
+      retries: 10
+      delay: 30
+      changed_when: false
+
+    - name: Install NGINX Ingress Controller
+      kubernetes.core.helm:
+        name: ingress-nginx
+        chart_ref: ingress-nginx/ingress-nginx
+        release_namespace: ingress-nginx
+        create_namespace: yes
+        values:
+          controller:
+            service:
+              type: LoadBalancer
+
+    - name: Install ArgoCD
+      kubernetes.core.helm:
+        name: argocd
+        chart_ref: argo/argo-cd
+        release_namespace: argocd
+        create_namespace: yes
+      when: enable_argocd | bool

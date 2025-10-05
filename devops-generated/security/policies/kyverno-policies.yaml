@@ -1,0 +1,125 @@
+# Kyverno Policies - Policy as Code
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kyverno
+---
+# Install Kyverno
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: kyverno
+  namespace: kyverno
+spec:
+  chart: kyverno
+  repo: https://kyverno.github.io/kyverno/
+  targetNamespace: kyverno
+---
+# Policy: Require non-root containers
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-non-root
+spec:
+  validationFailureAction: enforce
+  rules:
+    - name: check-runAsNonRoot
+      match:
+        resources:
+          kinds:
+            - Pod
+      validate:
+        message: "Running as root is not allowed"
+        pattern:
+          spec:
+            securityContext:
+              runAsNonRoot: true
+---
+# Policy: Require read-only root filesystem
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-ro-rootfs
+spec:
+  validationFailureAction: enforce
+  rules:
+    - name: check-readOnlyRootFilesystem
+      match:
+        resources:
+          kinds:
+            - Pod
+      validate:
+        message: "Root filesystem must be read-only"
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  readOnlyRootFilesystem: true
+---
+# Policy: Disallow privileged containers
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-privileged
+spec:
+  validationFailureAction: enforce
+  rules:
+    - name: check-privileged
+      match:
+        resources:
+          kinds:
+            - Pod
+      validate:
+        message: "Privileged containers are not allowed"
+        pattern:
+          spec:
+            containers:
+              - securityContext:
+                  privileged: false
+---
+# Policy: Require resource limits
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-limits
+spec:
+  validationFailureAction: enforce
+  rules:
+    - name: check-limits
+      match:
+        resources:
+          kinds:
+            - Pod
+          namespaces:
+            - mcp-devops-automation
+      validate:
+        message: "CPU and memory limits are required"
+        pattern:
+          spec:
+            containers:
+              - resources:
+                  limits:
+                    memory: "?*"
+                    cpu: "?*"
+---
+# Policy: Disallow latest tag
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-latest-tag
+spec:
+  validationFailureAction: enforce
+  rules:
+    - name: require-image-tag
+      match:
+        resources:
+          kinds:
+            - Pod
+      validate:
+        message: "Using 'latest' tag is not allowed. Please use a specific version tag."
+        deny:
+          conditions:
+            any:
+              - key: "{{ images.containers.*.tag }}"
+                operator: Equals
+                value: "latest"

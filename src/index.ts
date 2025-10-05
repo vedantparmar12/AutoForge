@@ -6,6 +6,7 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
   Tool,
+  CallToolResult,
 } from '@modelcontextprotocol/sdk/types.js';
 import { DevOpsTools } from './tools/devops-tools.js';
 import type { DevOpsConfig } from './types/index.js';
@@ -46,6 +47,18 @@ class DevOpsAutomationServer {
       const { name, arguments: args } = request.params;
 
       try {
+        if (!args) {
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: `Missing arguments for tool: ${name}`,
+              },
+            ],
+            isError: true,
+          };
+        }
+
         switch (name) {
           case 'analyze-project':
             return await this.devopsTools.analyzeProject(args.projectPath as string);
@@ -54,16 +67,16 @@ class DevOpsAutomationServer {
             return await this.devopsTools.calculateResources(args.projectPath as string);
 
           case 'generate-devops-setup':
-            return await this.devopsTools.generateDevOpsSetup(args as DevOpsConfig);
+            return await this.devopsTools.generateDevOpsSetup(args as unknown as DevOpsConfig);
 
           case 'deploy-to-aws':
-            return await this.devopsTools.deployToAWS(args as DevOpsConfig);
+            return await this.devopsTools.deployToAWS(args as unknown as DevOpsConfig);
 
           default:
             return {
               content: [
                 {
-                  type: 'text',
+                  type: 'text' as const,
                   text: `Unknown tool: ${name}`,
                 },
               ],
@@ -74,7 +87,7 @@ class DevOpsAutomationServer {
         return {
           content: [
             {
-              type: 'text',
+              type: 'text' as const,
               text: `Error executing ${name}: ${error.message}`,
             },
           ],

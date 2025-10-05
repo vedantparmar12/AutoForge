@@ -1,0 +1,94 @@
+---
+# AWS Configuration
+aws_region: us-east-1
+aws_profile: default
+
+# Project Configuration
+project_name: mcp-devops-automation
+cluster_name: "{{ project_name }}-cluster"
+cluster_version: "1.33"
+
+# VPC Configuration
+vpc_cidr: "10.0.0.0/16"
+availability_zones:
+  - us-east-1a
+  - us-east-1b
+  - us-east-1c
+
+# EKS Configuration
+eks_node_groups:
+  - name: main
+    instance_types:
+      - t3.large
+    desired_size: 3
+    min_size: 2
+    max_size: 6
+    disk_size: 50
+
+# Services Configuration
+services:
+  - name: analyzers
+    language: TypeScript
+    framework: none
+    port: 8080
+    replicas: 2
+    cpu_request: 375m
+    cpu_limit: 750m
+    memory_request: 384Mi
+    memory_limit: 768Mi
+  - name: calculators
+    language: TypeScript
+    framework: none
+    port: 8080
+    replicas: 2
+    cpu_request: 375m
+    cpu_limit: 750m
+    memory_request: 384Mi
+    memory_limit: 768Mi
+  - name: generators
+    language: TypeScript
+    framework: none
+    port: 8080
+    replicas: 2
+    cpu_request: 375m
+    cpu_limit: 750m
+    memory_request: 384Mi
+    memory_limit: 768Mi
+  - name: tools
+    language: TypeScript
+    framework: none
+    port: 8080
+    replicas: 2
+    cpu_request: 375m
+    cpu_limit: 750m
+    memory_request: 384Mi
+    memory_limit: 768Mi
+  - name: types
+    language: TypeScript
+    framework: none
+    port: 8080
+    replicas: 2
+    cpu_request: 375m
+    cpu_limit: 750m
+    memory_request: 384Mi
+    memory_limit: 768Mi
+
+
+# Docker Configuration
+ecr_registry: "{{ aws_account_id }}.dkr.ecr.{{ aws_region }}.amazonaws.com"
+docker_images:
+  - analyzers
+  - calculators
+  - generators
+  - tools
+  - types
+
+# Monitoring
+enable_monitoring: true
+enable_prometheus: true
+enable_grafana: true
+enable_logging: true
+
+# ArgoCD
+enable_argocd: true
+argocd_version: "2.9.0"

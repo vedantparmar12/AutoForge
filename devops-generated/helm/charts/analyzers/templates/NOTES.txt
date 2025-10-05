@@ -1,0 +1,62 @@
+✅ {{ .Chart.Name | upper }} has been deployed successfully!
+
+📊 RELEASE INFORMATION:
+   Name:      {{ .Release.Name }}
+   Namespace: {{ .Release.Namespace }}
+   Version:   {{ .Chart.Version }}
+   AppVersion: {{ .Chart.AppVersion }}
+
+🚀 DEPLOYMENT STATUS:
+{{- if .Values.autoscaling.enabled }}
+   Autoscaling: Enabled
+   - Min Replicas: {{ .Values.autoscaling.minReplicas }}
+   - Max Replicas: {{ .Values.autoscaling.maxReplicas }}
+   - CPU Target: {{ .Values.autoscaling.targetCPUUtilizationPercentage }}%
+   - Memory Target: {{ .Values.autoscaling.targetMemoryUtilizationPercentage }}%
+{{- else }}
+   Replicas: {{ .Values.replicaCount }}
+{{- end }}
+
+🔗 SERVICE ACCESS:
+{{- if .Values.ingress.enabled }}
+   Ingress Enabled:
+{{- range .Values.ingress.hosts }}
+   - https://{{ .host }}
+{{- end }}
+{{- else }}
+   Service Type: {{ .Values.service.type }}
+   Service Port: {{ .Values.service.port }}
+
+   To access the service:
+   kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "analyzers.fullname" . }} 8080:{{ .Values.service.port }}
+
+   Then visit: http://localhost:8080
+{{- end }}
+
+📈 MONITORING:
+{{- if .Values.serviceMonitor.enabled }}
+   ✅ Prometheus ServiceMonitor enabled
+   - Metrics Path: {{ .Values.serviceMonitor.path }}
+   - Scrape Interval: {{ .Values.serviceMonitor.interval }}
+{{- else }}
+   ⚠️  ServiceMonitor disabled
+{{- end }}
+
+🔍 USEFUL COMMANDS:
+   # Check pod status
+   kubectl get pods -n {{ .Release.Namespace }} -l app.kubernetes.io/name={{ .Chart.Name }}
+
+   # View logs
+   kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/name={{ .Chart.Name }} --tail=50 -f
+
+   # Check service
+   kubectl get svc -n {{ .Release.Namespace }} {{ include "analyzers.fullname" . }}
+
+   # Test health endpoint
+   kubectl exec -n {{ .Release.Namespace }} -it deployment/{{ include "analyzers.fullname" . }} -- wget -qO- http://localhost:8080/health
+
+⚙️  CONFIGURATION:
+   Image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+   Service Account: {{ .Values.serviceAccount.name }}
+
+📚 For more information, visit the project documentation.

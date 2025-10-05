@@ -1,0 +1,10 @@
+# Trivy configuration
+severity: CRITICAL,HIGH,MEDIUM
+vuln-type: os,library
+format: table
+exit-code: 1
+skip-dirs:
+  - /usr/local/bundle
+  - /node_modules
+ignore-unfixed: true
+timeout: 10m

@@ -1,0 +1,95 @@
+{
+  "title": "mcp-devops-automation - Services",
+  "uid": "mcp-devops-automation-services",
+  "tags": [
+    "mcp-devops-automation",
+    "services"
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "title": "analyzers - Requests/sec",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{namespace=\"mcp-devops-automation\",service=\"analyzers\"}[5m]))",
+          "legendFormat": "analyzers"
+        }
+      ],
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": 2,
+      "title": "calculators - Requests/sec",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{namespace=\"mcp-devops-automation\",service=\"calculators\"}[5m]))",
+          "legendFormat": "calculators"
+        }
+      ],
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      }
+    },
+    {
+      "id": 3,
+      "title": "generators - Requests/sec",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{namespace=\"mcp-devops-automation\",service=\"generators\"}[5m]))",
+          "legendFormat": "generators"
+        }
+      ],
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 0,
+        "y": 6
+      }
+    },
+    {
+      "id": 4,
+      "title": "tools - Requests/sec",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{namespace=\"mcp-devops-automation\",service=\"tools\"}[5m]))",
+          "legendFormat": "tools"
+        }
+      ],
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 12,
+        "y": 6
+      }
+    },
+    {
+      "id": 5,
+      "title": "types - Requests/sec",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{namespace=\"mcp-devops-automation\",service=\"types\"}[5m]))",
+          "legendFormat": "types"
+        }
+      ],
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 0,
+        "y": 12
+      }
+    }
+  ]
+}

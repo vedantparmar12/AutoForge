@@ -1,0 +1,32 @@
+{
+  "title": "mcp-devops-automation - Infrastructure",
+  "uid": "mcp-devops-automation-infrastructure",
+  "tags": [
+    "mcp-devops-automation",
+    "infrastructure"
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "title": "CPU Usage by Pod",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"mcp-devops-automation\"}[5m])) by (pod)",
+          "legendFormat": "{{ pod }}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Memory Usage by Pod",
+      "type": "graph",
+      "targets": [
+        {
+          "expr": "sum(container_memory_working_set_bytes{namespace=\"mcp-devops-automation\"}) by (pod)",
+          "legendFormat": "{{ pod }}"
+        }
+      ]
+    }
+  ]
+}

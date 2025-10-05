@@ -1,0 +1,46 @@
+# Custom Falco rules for mcp-devops-automation
+- list: allowed_containers
+  items: [analyzers, calculators, generators, tools, types]
+
+- rule: Suspicious Network Activity
+  desc: Detect unexpected network connections
+  condition: >
+    inbound_outbound and
+    container.name in (allowed_containers) and
+    not fd.sport in (80, 443, 8080, 3000, 5432)
+  output: >
+    Suspicious network activity detected
+    (container=%container.name connection=%fd.name)
+  priority: WARNING
+
+- rule: Write to Non-Data Directory
+  desc: Detect writes outside allowed directories
+  condition: >
+    open_write and
+    container and
+    not fd.name startswith /data and
+    not fd.name startswith /tmp
+  output: >
+    Unexpected write to filesystem
+    (file=%fd.name container=%container.name)
+  priority: WARNING
+
+- rule: Privilege Escalation Attempt
+  desc: Detect attempts to escalate privileges
+  condition: >
+    spawned_process and
+    proc.name in (sudo, su, setuid) and
+    container
+  output: >
+    Privilege escalation attempt detected
+    (user=%user.name command=%proc.cmdline)
+  priority: CRITICAL
+
+- rule: Cryptocurrency Mining
+  desc: Detect crypto mining processes
+  condition: >
+    spawned_process and
+    proc.name in (xmrig, cpuminer, ethminer)
+  output: >
+    Cryptocurrency mining detected (process=%proc.name)
+  priority: CRITICAL

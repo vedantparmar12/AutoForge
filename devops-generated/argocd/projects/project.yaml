@@ -1,0 +1,47 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: mcp-devops-automation
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: mcp-devops-automation project
+
+  # Source repositories
+  sourceRepos:
+    - '*'  # Allow all repos (restrict in production)
+
+  # Destination clusters and namespaces
+  destinations:
+    - namespace: mcp-devops-automation
+      server: https://kubernetes.default.svc
+    - namespace: '*'
+      server: https://kubernetes.default.svc
+
+  # Cluster resource whitelist
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+
+  # Namespace resource whitelist
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
+
+  # Roles for access control
+  roles:
+    - name: admin
+      description: Admin access to mcp-devops-automation
+      policies:
+        - p, proj:mcp-devops-automation:admin, applications, *, mcp-devops-automation/*, allow
+      groups:
+        - mcp-devops-automation-admins
+
+    - name: developer
+      description: Developer access to mcp-devops-automation
+      policies:
+        - p, proj:mcp-devops-automation:developer, applications, get, mcp-devops-automation/*, allow
+        - p, proj:mcp-devops-automation:developer, applications, sync, mcp-devops-automation/*, allow
+      groups:
+        - mcp-devops-automation-developers

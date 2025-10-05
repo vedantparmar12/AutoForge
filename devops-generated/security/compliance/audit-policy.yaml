@@ -1,0 +1,28 @@
+# Kubernetes Audit Policy
+apiVersion: audit.k8s.io/v1
+kind: Policy
+rules:
+  # Log all requests at Metadata level
+  - level: Metadata
+
+  # Don't log read-only requests
+  - level: None
+    verbs: ["get", "list", "watch"]
+
+  # Log requests to sensitive resources at RequestResponse level
+  - level: RequestResponse
+    resources:
+      - group: ""
+        resources: ["secrets", "configmaps"]
+
+  # Log authentication/authorization events
+  - level: RequestResponse
+    verbs: ["create", "update", "patch", "delete"]
+    users: ["system:serviceaccount:*"]
+
+  # Don't log healthz/readyz
+  - level: None
+    paths:
+      - /healthz*
+      - /readyz*
+      - /livez*

@@ -1,0 +1,27 @@
+apiVersion: v2
+name: mcp-devops-automation
+description: Umbrella Helm chart for mcp-devops-automation
+type: application
+version: 1.0.0
+appVersion: "1.0"
+dependencies:
+  - name: analyzers
+    version: "1.0.0"
+    repository: "file://charts/analyzers"
+    condition: analyzers.enabled
+  - name: calculators
+    version: "1.0.0"
+    repository: "file://charts/calculators"
+    condition: calculators.enabled
+  - name: generators
+    version: "1.0.0"
+    repository: "file://charts/generators"
+    condition: generators.enabled
+  - name: tools
+    version: "1.0.0"
+    repository: "file://charts/tools"
+    condition: tools.enabled
+  - name: types
+    version: "1.0.0"
+    repository: "file://charts/types"
+    condition: types.enabled

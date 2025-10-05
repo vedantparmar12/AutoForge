@@ -1,0 +1,304 @@
+# Network Policies - Micro-segmentation
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: analyzers-netpol
+  namespace: mcp-devops-automation
+spec:
+  podSelector:
+    matchLabels:
+      app: analyzers
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow from other services in same namespace
+    - from:
+        - podSelector: {}
+  egress:
+    # Allow DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+        - podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow to other services in same namespace
+    - to:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow HTTPS egress to internet (optional - comment out for stricter policy)
+    # WARNING: This allows egress to any external service on port 443
+    # For production, replace with specific external service IPs/domains
+    # - to:
+    #     - ipBlock:
+    #         cidr: 0.0.0.0/0
+    #         except:
+    #           - 169.254.169.254/32  # Block AWS metadata service
+    #   ports:
+    #     - protocol: TCP
+    #       port: 443
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: calculators-netpol
+  namespace: mcp-devops-automation
+spec:
+  podSelector:
+    matchLabels:
+      app: calculators
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow from other services in same namespace
+    - from:
+        - podSelector: {}
+  egress:
+    # Allow DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+        - podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow to other services in same namespace
+    - to:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow HTTPS egress to internet (optional - comment out for stricter policy)
+    # WARNING: This allows egress to any external service on port 443
+    # For production, replace with specific external service IPs/domains
+    # - to:
+    #     - ipBlock:
+    #         cidr: 0.0.0.0/0
+    #         except:
+    #           - 169.254.169.254/32  # Block AWS metadata service
+    #   ports:
+    #     - protocol: TCP
+    #       port: 443
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: generators-netpol
+  namespace: mcp-devops-automation
+spec:
+  podSelector:
+    matchLabels:
+      app: generators
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow from other services in same namespace
+    - from:
+        - podSelector: {}
+  egress:
+    # Allow DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+        - podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow to other services in same namespace
+    - to:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow HTTPS egress to internet (optional - comment out for stricter policy)
+    # WARNING: This allows egress to any external service on port 443
+    # For production, replace with specific external service IPs/domains
+    # - to:
+    #     - ipBlock:
+    #         cidr: 0.0.0.0/0
+    #         except:
+    #           - 169.254.169.254/32  # Block AWS metadata service
+    #   ports:
+    #     - protocol: TCP
+    #       port: 443
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: tools-netpol
+  namespace: mcp-devops-automation
+spec:
+  podSelector:
+    matchLabels:
+      app: tools
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow from other services in same namespace
+    - from:
+        - podSelector: {}
+  egress:
+    # Allow DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+        - podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow to other services in same namespace
+    - to:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow HTTPS egress to internet (optional - comment out for stricter policy)
+    # WARNING: This allows egress to any external service on port 443
+    # For production, replace with specific external service IPs/domains
+    # - to:
+    #     - ipBlock:
+    #         cidr: 0.0.0.0/0
+    #         except:
+    #           - 169.254.169.254/32  # Block AWS metadata service
+    #   ports:
+    #     - protocol: TCP
+    #       port: 443
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: types-netpol
+  namespace: mcp-devops-automation
+spec:
+  podSelector:
+    matchLabels:
+      app: types
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from ingress controller
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress-nginx
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow from other services in same namespace
+    - from:
+        - podSelector: {}
+  egress:
+    # Allow DNS
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+        - podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+    # Allow to other services in same namespace
+    - to:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 8080
+    # Allow HTTPS egress to internet (optional - comment out for stricter policy)
+    # WARNING: This allows egress to any external service on port 443
+    # For production, replace with specific external service IPs/domains
+    # - to:
+    #     - ipBlock:
+    #         cidr: 0.0.0.0/0
+    #         except:
+    #           - 169.254.169.254/32  # Block AWS metadata service
+    #   ports:
+    #     - protocol: TCP
+    #       port: 443
+
+
+---
+# Default deny all traffic
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: mcp-devops-automation
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress

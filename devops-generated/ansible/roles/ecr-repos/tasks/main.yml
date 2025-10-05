@@ -1,0 +1,28 @@
+---
+- name: Create ECR repositories
+  community.aws.ecs_ecr:
+    name: "{{ cluster_name }}/{{ item }}"
+    region: "{{ aws_region }}"
+    scan_on_push: yes
+    image_tag_mutability: MUTABLE
+  loop:
+    - analyzers
+    - calculators
+    - generators
+    - tools
+    - types
+  register: ecr_repos
+
+- name: Set lifecycle policy
+  command: >
+    aws ecr put-lifecycle-policy
+    --repository-name {{ cluster_name }}/{{ item }}
+    --lifecycle-policy-text '{"rules":[{"rulePriority":1,"description":"Keep last 30 images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":30},"action":{"type":"expire"}}]}'
+    --region {{ aws_region }}
+  loop:
+    - analyzers
+    - calculators
+    - generators
+    - tools
+    - types
+  changed_when: true

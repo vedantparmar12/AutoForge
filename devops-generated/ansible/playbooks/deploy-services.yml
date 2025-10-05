@@ -1,0 +1,46 @@
+---
+- name: Deploy Services
+  hosts: localhost
+  connection: local
+  gather_facts: yes
+
+  tasks:
+    - name: Create namespace
+      kubernetes.core.k8s:
+        name: "{{ project_name }}"
+        kind: Namespace
+        state: present
+
+    - name: Build and push Docker images
+      include_tasks: build-and-push.yml
+      loop: "{{ services }}"
+      loop_control:
+        loop_var: service
+
+    - name: Deploy Kubernetes manifests
+      include_role:
+        name: k8s-deploy
+
+    - name: Wait for deployments to be ready
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        namespace: "{{ project_name }}"
+        name: "{{ item.name }}"
+        wait: yes
+        wait_condition:
+          type: Available
+          status: "True"
+        wait_timeout: 300
+      loop: "{{ services }}"
+
+    - name: Get service endpoints
+      kubernetes.core.k8s_info:
+        kind: Service
+        namespace: "{{ project_name }}"
+      register: services_info
+
+    - name: Display service information
+      debug:
+        msg:
+          - "Services deployed successfully!"
+          - "{{ services_info }}"
