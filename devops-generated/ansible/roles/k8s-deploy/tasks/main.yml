@@ -1,0 +1,20 @@
+---
+- name: Deploy Kubernetes manifests
+  kubernetes.core.k8s:
+    src: "{{ item }}"
+    state: present
+    namespace: "{{ project_name }}"
+  with_fileglob:
+    - ../../../k8s/*.yaml
+
+- name: Deploy Helm charts
+  kubernetes.core.helm:
+    name: "{{ item.name }}"
+    chart_ref: "../../../helm/charts/{{ item.name }}"
+    release_namespace: "{{ project_name }}"
+    create_namespace: yes
+    values:
+      image:
+        repository: "{{ ecr_registry }}/{{ item.name }}"
+        tag: latest
+  loop: "{{ services }}"

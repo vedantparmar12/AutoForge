@@ -1,0 +1,16 @@
+apiVersion: v2
+name: tools
+description: Helm chart for tools service
+type: application
+version: 1.0.0
+appVersion: "1.0"
+keywords:
+  - tools
+  - mcp-devops-automation
+  - microservice
+home: https://github.com/your-org/mcp-devops-automation
+sources:
+  - https://github.com/your-org/mcp-devops-automation
+maintainers:
+  - name: DevOps Team
+    email: devops@example.com

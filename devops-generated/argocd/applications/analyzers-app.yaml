@@ -1,0 +1,63 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: mcp-devops-automation-analyzers
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    notifications.argoproj.io/subscribe.on-deployed.slack: mcp-devops-automation-notifications
+    notifications.argoproj.io/subscribe.on-sync-failed.slack: mcp-devops-automation-alerts
+spec:
+  project: mcp-devops-automation
+
+  source:
+    repoURL: https://github.com/your-org/your-repo.git
+    targetRevision: HEAD
+    path: helm/charts/analyzers
+    helm:
+      releaseName: analyzers
+      valueFiles:
+        - values.yaml
+        - values-prod.yaml
+      parameters:
+        - name: image.tag
+          value: latest
+        - name: image.repository
+          value: ${ECR_REGISTRY}/analyzers
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: mcp-devops-automation
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 3
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 1m
+
+  # Health assessment
+  health:
+    - kind: Deployment
+      check: |
+        hs = {}
+        if obj.status ~= nil then
+          if obj.status.updatedReplicas == obj.spec.replicas and
+             obj.status.replicas == obj.spec.replicas and
+             obj.status.availableReplicas == obj.spec.replicas then
+            hs.status = "Healthy"
+            hs.message = "All replicas are ready"
+            return hs
+          end
+        end
+        hs.status = "Progressing"
+        hs.message = "Waiting for all replicas"
+        return hs

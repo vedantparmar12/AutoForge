@@ -1,5 +1,6 @@
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
+import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { ProjectAnalyzer } from '../analyzers/project-analyzer.js';
 import { ResourceCalculator } from '../calculators/resource-calculator.js';
 import { KubernetesGenerator } from '../generators/kubernetes-generator.js';
@@ -10,7 +11,7 @@ import { ArgoCDGenerator } from '../generators/argocd-generator.js';
 import { MonitoringGenerator } from '../generators/monitoring-generator.js';
 import { AnsibleGenerator } from '../generators/ansible-generator.js';
 import { SecurityGenerator } from '../generators/security-generator.js';
-import type { DevOpsConfig, ToolResponse } from '../types/index.js';
+import type { DevOpsConfig } from '../types/index.js';
 
 export class DevOpsTools {
   private analyzer = new ProjectAnalyzer();
@@ -24,7 +25,7 @@ export class DevOpsTools {
   private ansibleGenerator = new AnsibleGenerator();
   private securityGenerator = new SecurityGenerator();
 
-  async analyzeProject(projectPath: string): Promise<ToolResponse> {
+  async analyzeProject(projectPath: string): Promise<CallToolResult> {
     try {
       const analysis = await this.analyzer.analyzeProject(projectPath);
 
@@ -62,7 +63,7 @@ export class DevOpsTools {
     }
   }
 
-  async calculateResources(projectPath: string): Promise<ToolResponse> {
+  async calculateResources(projectPath: string): Promise<CallToolResult> {
     try {
       const analysis = await this.analyzer.analyzeProject(projectPath);
       const resources = this.calculator.calculateResources(analysis);
@@ -96,7 +97,7 @@ export class DevOpsTools {
     }
   }
 
-  async generateDevOpsSetup(config: DevOpsConfig): Promise<ToolResponse> {
+  async generateDevOpsSetup(config: DevOpsConfig): Promise<CallToolResult> {
     try {
       const outputDir = config.outputDir || join(config.projectPath, 'devops-generated');
 
@@ -255,7 +256,7 @@ export class DevOpsTools {
     }
   }
 
-  async deployToAWS(config: DevOpsConfig): Promise<ToolResponse> {
+  async deployToAWS(config: DevOpsConfig): Promise<CallToolResult> {
     try {
       if (config.dryRun) {
         return {

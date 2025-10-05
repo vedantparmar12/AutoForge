@@ -1,0 +1,81 @@
+# Grafana configuration
+replicas: 2
+
+adminUser: admin
+adminPassword: changeme
+
+persistence:
+  enabled: true
+  type: pvc
+  storageClassName: gp3
+  size: 10Gi
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+ingress:
+  enabled: true
+  ingressClassName: nginx
+  hosts:
+    - grafana.mcp-devops-automation.example.com
+  tls:
+    - secretName: grafana-tls
+      hosts:
+        - grafana.mcp-devops-automation.example.com
+
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        url: http://prometheus-operated:9090
+        access: proxy
+        isDefault: true
+        jsonData:
+          timeInterval: 30s
+
+dashboardProviders:
+  dashboardproviders.yaml:
+    apiVersion: 1
+    providers:
+      - name: 'mcp-devops-automation'
+        orgId: 1
+        folder: 'mcp-devops-automation'
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/mcp-devops-automation
+
+dashboards:
+  mcp-devops-automation:
+    overview:
+      file: dashboards/overview.json
+    services:
+      file: dashboards/services.json
+    infrastructure:
+      file: dashboards/infrastructure.json
+
+# Plugins
+plugins:
+  - grafana-piechart-panel
+  - grafana-clock-panel
+
+# Notification channels
+notifiers:
+  notifiers.yaml:
+    notifiers:
+      - name: Slack
+        type: slack
+        uid: slack
+        org_id: 1
+        is_default: true
+        settings:
+          url: YOUR_SLACK_WEBHOOK_URL
+          recipient: '#mcp-devops-automation-alerts'

@@ -1,0 +1,10 @@
+# Pod Security Standards - Enforce security best practices
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mcp-devops-automation
+  labels:
+    # Enforce restricted pod security standard
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted

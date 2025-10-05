@@ -1,0 +1,51 @@
+---
+- name: Rollback Deployment
+  hosts: localhost
+  connection: local
+  gather_facts: yes
+
+  vars_prompt:
+    - name: rollback_revision
+      prompt: "Enter revision to rollback to (leave empty for previous)"
+      private: no
+
+  tasks:
+    - name: Get deployment history
+      command: >
+        kubectl rollout history deployment/{{ item.name }}
+        -n {{ project_name }}
+      loop: "{{ services }}"
+      register: history
+      changed_when: false
+
+    - name: Display deployment history
+      debug:
+        msg: "{{ history.results | map(attribute='stdout') | list }}"
+
+    - name: Rollback deployments
+      command: >
+        kubectl rollout undo deployment/{{ item.name }}
+        -n {{ project_name }}
+        {% if rollback_revision %}--to-revision={{ rollback_revision }}{% endif %}
+      loop: "{{ services }}"
+      register: rollback_result
+
+    - name: Wait for rollback to complete
+      command: >
+        kubectl rollout status deployment/{{ item.name }}
+        -n {{ project_name }}
+      loop: "{{ services }}"
+      changed_when: false
+
+    - name: Verify rollback
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        namespace: "{{ project_name }}"
+        name: "{{ item.name }}"
+      loop: "{{ services }}"
+      register: deployment_status
+
+    - name: Display rollback results
+      debug:
+        msg: "Rollback completed for {{ item.item.name }}"
+      loop: "{{ deployment_status.results }}"

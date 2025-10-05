@@ -1,0 +1,32 @@
+---
+- name: Create EKS cluster
+  community.aws.eks_cluster:
+    name: "{{ cluster_name }}"
+    version: "{{ cluster_version }}"
+    role_arn: "arn:aws:iam::{{ aws_account_id }}:role/eks-cluster-role"
+    subnets_ids:
+      - "{{ private_subnet_1_id }}"
+      - "{{ private_subnet_2_id }}"
+    security_groups:
+      - "{{ eks_security_group_id }}"
+    region: "{{ aws_region }}"
+    wait: yes
+    wait_timeout: 1800
+
+- name: Create EKS node group
+  community.aws.eks_nodegroup:
+    name: "{{ item.name }}"
+    cluster_name: "{{ cluster_name }}"
+    node_role: "arn:aws:iam::{{ aws_account_id }}:role/eks-node-role"
+    subnets:
+      - "{{ private_subnet_1_id }}"
+      - "{{ private_subnet_2_id }}"
+    instance_types: "{{ item.instance_types }}"
+    scaling_config:
+      min_size: "{{ item.min_size }}"
+      max_size: "{{ item.max_size }}"
+      desired_size: "{{ item.desired_size }}"
+    disk_size: "{{ item.disk_size }}"
+    region: "{{ aws_region }}"
+    wait: yes
+  loop: "{{ eks_node_groups }}"

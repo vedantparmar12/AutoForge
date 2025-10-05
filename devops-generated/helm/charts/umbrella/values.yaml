@@ -1,0 +1,77 @@
+# Global values shared across all services
+global:
+  imageRegistry: ${ECR_REGISTRY}
+  imagePullPolicy: Always
+  storageClass: gp3
+
+  # AWS Configuration
+  aws:
+    region: us-east-1
+    accountId: ${AWS_ACCOUNT_ID}
+
+# Individual service configurations
+analyzers:
+  enabled: true
+  replicaCount: 2
+  image:
+    tag: latest
+  resources:
+    limits:
+      cpu: 750m
+      memory: 768Mi
+    requests:
+      cpu: 375m
+      memory: 384Mi
+
+calculators:
+  enabled: true
+  replicaCount: 2
+  image:
+    tag: latest
+  resources:
+    limits:
+      cpu: 750m
+      memory: 768Mi
+    requests:
+      cpu: 375m
+      memory: 384Mi
+
+generators:
+  enabled: true
+  replicaCount: 2
+  image:
+    tag: latest
+  resources:
+    limits:
+      cpu: 750m
+      memory: 768Mi
+    requests:
+      cpu: 375m
+      memory: 384Mi
+
+tools:
+  enabled: true
+  replicaCount: 2
+  image:
+    tag: latest
+  resources:
+    limits:
+      cpu: 750m
+      memory: 768Mi
+    requests:
+      cpu: 375m
+      memory: 384Mi
+
+types:
+  enabled: true
+  replicaCount: 2
+  image:
+    tag: latest
+  resources:
+    limits:
+      cpu: 750m
+      memory: 768Mi
+    requests:
+      cpu: 375m
+      memory: 384Mi
+

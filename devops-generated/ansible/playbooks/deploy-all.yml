@@ -1,0 +1,31 @@
+---
+- name: Deploy mcp-devops-automation - Complete Setup
+  hosts: localhost
+  connection: local
+  gather_facts: yes
+
+  tasks:
+    - name: Display deployment information
+      debug:
+        msg:
+          - "Project: {{ project_name }}"
+          - "Region: {{ aws_region }}"
+          - "Cluster: {{ cluster_name }}"
+          - "Services: 5"
+
+    - name: Setup AWS Infrastructure
+      import_playbook: setup-infrastructure.yml
+
+    - name: Deploy Services
+      import_playbook: deploy-services.yml
+
+    - name: Deploy Monitoring Stack
+      import_playbook: setup-monitoring.yml
+      when: enable_monitoring | bool
+
+    - name: Display access information
+      debug:
+        msg:
+          - "Deployment complete!"
+          - "Run: kubectl get pods -n {{ project_name }}"
+          - "Get ingress: kubectl get ingress -n {{ project_name }}"

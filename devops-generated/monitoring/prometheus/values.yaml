@@ -1,0 +1,126 @@
+# Prometheus configuration
+prometheus:
+  prometheusSpec:
+    retention: 15d
+    retentionSize: "50GB"
+
+    replicas: 2
+
+    resources:
+      requests:
+        cpu: 500m
+        memory: 2Gi
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 50Gi
+
+    # Service monitors
+    serviceMonitorSelector:
+      matchLabels:
+        app.kubernetes.io/part-of: mcp-devops-automation
+
+    # Pod monitors
+    podMonitorSelector:
+      matchLabels:
+        app.kubernetes.io/part-of: mcp-devops-automation
+
+    # Alert manager config
+    alerting:
+      alertmanagers:
+        - namespace: monitoring
+          name: alertmanager-operated
+          port: web
+
+    # External labels
+    externalLabels:
+      cluster: mcp-devops-automation-cluster
+      environment: production
+
+  # Ingress for Prometheus UI
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    hosts:
+      - prometheus.mcp-devops-automation.example.com
+    tls:
+      - secretName: prometheus-tls
+        hosts:
+          - prometheus.mcp-devops-automation.example.com
+
+# Alert Manager
+alertmanager:
+  alertmanagerSpec:
+    replicas: 2
+
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi
+
+  config:
+    global:
+      resolve_timeout: 5m
+      slack_api_url: 'YOUR_SLACK_WEBHOOK_URL'
+
+    route:
+      group_by: ['alertname', 'cluster', 'service']
+      group_wait: 10s
+      group_interval: 10s
+      repeat_interval: 12h
+      receiver: 'slack-notifications'
+      routes:
+        - match:
+            severity: critical
+          receiver: 'slack-critical'
+          continue: true
+
+        - match:
+            severity: warning
+          receiver: 'slack-warnings'
+
+    receivers:
+      - name: 'slack-notifications'
+        slack_configs:
+          - channel: '#mcp-devops-automation-alerts'
+            title: 'Alert: {{ .CommonLabels.alertname }}'
+            text: '{{ range .Alerts }}{{ .Annotations.message }}{{ end }}'
+
+      - name: 'slack-critical'
+        slack_configs:
+          - channel: '#mcp-devops-automation-critical'
+            title: 'CRITICAL: {{ .CommonLabels.alertname }}'
+            text: '{{ range .Alerts }}{{ .Annotations.message }}{{ end }}'
+
+      - name: 'slack-warnings'
+        slack_configs:
+          - channel: '#mcp-devops-automation-warnings'
+            title: 'Warning: {{ .CommonLabels.alertname }}'
+            text: '{{ range .Alerts }}{{ .Annotations.message }}{{ end }}'
+
+# Grafana integration
+grafana:
+  enabled: true
+  adminPassword: changeme
+
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          url: http://prometheus-operated:9090
+          isDefault: true
+          editable: false

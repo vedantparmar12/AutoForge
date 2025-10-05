@@ -1,4 +1,5 @@
 import type { ProjectAnalysis, ResourceRequirements, ServiceResources, KubernetesManifests } from '../types/index.js';
+import * as yaml from 'js-yaml';
 
 export class KubernetesGenerator {
   generateManifests(
@@ -394,7 +395,6 @@ export class KubernetesGenerator {
   }
 
   exportToYAML(manifests: KubernetesManifests): string {
-    const yaml = require('js-yaml');
     const allManifests = [
       ...manifests.deployments,
       ...manifests.services,

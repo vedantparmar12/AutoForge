@@ -1,0 +1,34 @@
+# Velero Backup Schedules
+---
+# Daily full cluster backup
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: daily-backup
+  namespace: velero
+spec:
+  schedule: "0 2 * * *"  # 2 AM daily
+  template:
+    ttl: 720h  # 30 days retention
+    includedNamespaces:
+      - mcp-devops-automation
+      - istio-system
+      - monitoring
+    snapshotVolumes: true
+
+---
+# Hourly application backup
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: hourly-app-backup
+  namespace: velero
+spec:
+  schedule: "0 * * * *"  # Every hour
+  template:
+    ttl: 168h  # 7 days retention
+    includedNamespaces:
+      - mcp-devops-automation
+    labelSelector:
+      matchLabels:
+        backup: "true"

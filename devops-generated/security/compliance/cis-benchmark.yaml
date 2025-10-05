@@ -1,0 +1,29 @@
+# CIS Kubernetes Benchmark
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kube-bench
+  namespace: kube-system
+spec:
+  template:
+    spec:
+      hostPID: true
+      containers:
+        - name: kube-bench
+          image: aquasec/kube-bench:latest
+          command: ["kube-bench", "run", "--targets", "node,policies,managedservices"]
+          volumeMounts:
+            - name: var-lib-kubelet
+              mountPath: /var/lib/kubelet
+              readOnly: true
+            - name: etc-kubernetes
+              mountPath: /etc/kubernetes
+              readOnly: true
+      restartPolicy: Never
+      volumes:
+        - name: var-lib-kubelet
+          hostPath:
+            path: "/var/lib/kubelet"
+        - name: etc-kubernetes
+          hostPath:
+            path: "/etc/kubernetes"

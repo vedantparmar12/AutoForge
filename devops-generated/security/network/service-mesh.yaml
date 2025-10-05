@@ -1,0 +1,42 @@
+# Istio Service Mesh Configuration
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+metadata:
+  name: istio-control-plane
+  namespace: istio-system
+spec:
+  profile: default
+
+  meshConfig:
+    # Enable mTLS by default
+    enableAutoMtls: true
+
+    # Access logging
+    accessLogFile: /dev/stdout
+    accessLogEncoding: JSON
+
+  components:
+    pilot:
+      k8s:
+        resources:
+          requests:
+            cpu: 500m
+            memory: 2Gi
+
+    ingressGateways:
+      - name: istio-ingressgateway
+        enabled: true
+        k8s:
+          service:
+            type: LoadBalancer
+
+---
+# Peer Authentication - Require mTLS
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: mcp-devops-automation
+spec:
+  mtls:
+    mode: STRICT

@@ -1,0 +1,33 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: mcp-devops-automation-recording-rules
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: mcp-devops-automation
+spec:
+  groups:
+    - name: mcp-devops-automation.aggregations
+      interval: 30s
+      rules:
+        # Request rate
+        - record: job:http_requests:rate5m
+          expr: sum(rate(http_requests_total{job=~"mcp-devops-automation.*"}[5m])) by (job, method, status)
+
+        # Error rate
+        - record: job:http_errors:rate5m
+          expr: sum(rate(http_requests_total{job=~"mcp-devops-automation.*",status=~"5.."}[5m])) by (job)
+
+        # Response time percentiles
+        - record: job:http_request_duration:p95
+          expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=~"mcp-devops-automation.*"}[5m])) by (job, le))
+
+        - record: job:http_request_duration:p99
+          expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=~"mcp-devops-automation.*"}[5m])) by (job, le))
+
+        # Resource usage
+        - record: namespace:container_cpu_usage:sum
+          expr: sum(rate(container_cpu_usage_seconds_total{namespace="mcp-devops-automation"}[5m])) by (namespace, pod)
+
+        - record: namespace:container_memory_usage:sum
+          expr: sum(container_memory_working_set_bytes{namespace="mcp-devops-automation"}) by (namespace, pod)

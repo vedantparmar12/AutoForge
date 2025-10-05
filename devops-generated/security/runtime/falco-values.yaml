@@ -1,0 +1,58 @@
+# Falco - Runtime security monitoring
+falco:
+  enabled: true
+
+  # Use eBPF instead of kernel module
+  ebpf:
+    enabled: true
+
+  # Configure outputs
+  json_output: true
+  json_include_output_property: true
+
+  # Alert channels
+  outputs:
+    rate: 1
+    max_burst: 1000
+
+  # Slack integration
+  slack:
+    enabled: true
+    webhook_url: ${SLACK_WEBHOOK_URL}
+
+  # File output
+  file_output:
+    enabled: true
+    keep_alive: false
+    filename: /var/log/falco/events.txt
+
+# Falcosidekick - Route alerts to multiple destinations
+falcosidekick:
+  enabled: true
+
+  config:
+    slack:
+      webhookurl: ${SLACK_WEBHOOK_URL}
+      channel: "#mcp-devops-automation-security-alerts"
+      minimumpriority: warning
+
+    prometheus:
+      enabled: true
+
+    alertmanager:
+      hostport: http://alertmanager-operated:9093
+
+# Custom rules
+customRules:
+  rules-mcp-devops-automation.yaml: |-
+    - rule: Unauthorized Process in Container
+      desc: Detect execution of unauthorized processes
+      condition: >
+        spawned_process and
+        container and
+        not proc.name in (node, java, python, go, sh, bash, curl, wget, npm, yarn, git, tar, gzip, ps, ls, cat, grep, awk, sed) and
+        not proc.pname in (node, java, python, go, npm, yarn)
+      output: >
+        Unauthorized process started (user=%user.name container=%container.name
+        process=%proc.cmdline parent=%proc.pname)
+      priority: WARNING
