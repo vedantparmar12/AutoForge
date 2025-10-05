@@ -17,10 +17,16 @@ terraform {
   }
 
   backend "s3" {
-    bucket = "mcp-devops-automation-terraform-state"
-    key    = "devops/terraform.tfstate"
-    region = "us-east-1"
-    encrypt = true
+    bucket         = "mcp-devops-automation-terraform-state"
+    key            = "devops/terraform.tfstate"
+    region         = "us-east-1"
+    encrypt        = true
+    dynamodb_table = "mcp-devops-automation-terraform-lock"
+
+    # Note: Update the key based on environment:
+    # dev: "dev/terraform.tfstate"
+    # staging: "staging/terraform.tfstate"
+    # prod: "prod/terraform.tfstate"
   }
 }
 

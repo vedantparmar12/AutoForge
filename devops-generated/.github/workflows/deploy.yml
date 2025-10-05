@@ -2,27 +2,71 @@ name: Deploy to EKS
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main      # Auto-deploy to production
+      - develop   # Auto-deploy to staging
     paths:
       - 'k8s/**'
       - 'helm/**'
+      - 'src/**'
   workflow_dispatch:
     inputs:
       environment:
         description: 'Environment to deploy to'
         required: true
-        default: 'production'
+        default: 'staging'
         type: choice
         options:
           - production
           - staging
           - development
+      deployment_strategy:
+        description: 'Deployment Strategy'
+        required: false
+        default: 'rolling'
+        type: choice
+        options:
+          - rolling
+          - blue-green
+          - canary
 
 jobs:
-  deploy:
-    name: Deploy to Kubernetes
+  # Determine environment based on branch
+  set-environment:
+    name: Set Environment
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment || 'production' }}
+    outputs:
+      environment: ${{ steps.set-env.outputs.environment }}
+      cluster_name: ${{ steps.set-env.outputs.cluster_name }}
+    steps:
+      - id: set-env
+        run: |
+          if [ "${{ github.event.inputs.environment }}" != "" ]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" == "refs/heads/develop" ]; then
+            echo "environment=staging" >> $GITHUB_OUTPUT
+          else
+            echo "environment=development" >> $GITHUB_OUTPUT
+          fi
+
+          # Set cluster name based on environment
+          if [ "$(cat $GITHUB_OUTPUT | grep environment | cut -d= -f2)" == "production" ]; then
+            echo "cluster_name=mcp-devops-automation-prod-cluster" >> $GITHUB_OUTPUT
+          elif [ "$(cat $GITHUB_OUTPUT | grep environment | cut -d= -f2)" == "staging" ]; then
+            echo "cluster_name=mcp-devops-automation-staging-cluster" >> $GITHUB_OUTPUT
+          else
+            echo "cluster_name=mcp-devops-automation-dev-cluster" >> $GITHUB_OUTPUT
+          fi
+
+  # Deploy to staging (automatic)
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: set-environment
+    if: needs.set-environment.outputs.environment == 'staging'
+    environment: staging
 
     steps:
       - name: Checkout code
@@ -37,30 +81,168 @@ jobs:
 
       - name: Update kubeconfig
         run: |
-          aws eks update-kubeconfig --name mcp-devops-automation-cluster --region ${{ secrets.AWS_REGION }}
+          aws eks update-kubeconfig --name ${{ needs.set-environment.outputs.cluster_name }} --region ${{ secrets.AWS_REGION }}
 
-      - name: Deploy to Kubernetes
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: '3.12.0'
+
+      - name: Deploy with Helm (Rolling Update)
         run: |
-          kubectl apply -f k8s/ -n mcp-devops-automation
+          helm upgrade --install mcp-devops-automation ./helm/charts/umbrella \
+            --namespace mcp-devops-automation \
+            --create-namespace \
+            --set global.environment=staging \
+            --wait \
+            --timeout 10m
 
       - name: Wait for deployment
         run: |
-          kubectl rollout status deployment -n mcp-devops-automation --timeout=5m
+          kubectl rollout status deployment -n mcp-devops-automation --timeout=10m
+
+      - name: Run smoke tests
+        run: |
+          echo "Running smoke tests on staging..."
+          # Test each service health endpoint
+          for service in analyzers calculators generators tools types; do
+            kubectl run test-$service --rm -i --restart=Never \
+              --image=curlimages/curl:latest \
+              -- curl -f http://$service.mcp-devops-automation.svc.cluster.local/health || exit 1
+          done
 
       - name: Verify deployment
         run: |
           kubectl get pods -n mcp-devops-automation
           kubectl get svc -n mcp-devops-automation
+          kubectl top pods -n mcp-devops-automation
 
-      - name: Run smoke tests
-        run: |
-          # Add smoke tests here
-          echo "Running smoke tests..."
-
-      - name: Notify deployment status
+      - name: Notify staging deployment
         if: always()
         uses: 8398a7/action-slack@v3
         with:
           status: ${{ job.status }}
-          text: 'Deployment to ${{ github.event.inputs.environment || 'production' }} ${{ job.status }}'
+          text: 'Staging deployment ${{ job.status }} - Ready for production promotion'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+
+  # Deploy to production (requires manual approval)
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: set-environment
+    if: needs.set-environment.outputs.environment == 'production'
+    environment:
+      name: production
+      url: https://mcp-devops-automation.example.com
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --name ${{ needs.set-environment.outputs.cluster_name }} --region ${{ secrets.AWS_REGION }}
+
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: '3.12.0'
+
+      - name: Deploy with Blue-Green Strategy
+        if: github.event.inputs.deployment_strategy == 'blue-green'
+        run: |
+          # Deploy to green environment
+          helm upgrade --install mcp-devops-automation-green ./helm/charts/umbrella \
+            --namespace mcp-devops-automation-green \
+            --create-namespace \
+            --set global.environment=production \
+            --set global.color=green \
+            --wait \
+            --timeout 15m
+
+          # Run smoke tests on green
+          kubectl run test-green --rm -i --restart=Never \
+            --image=curlimages/curl:latest \
+            -- curl -f http://analyzers.mcp-devops-automation-green.svc.cluster.local/health
+
+          # Switch traffic to green (update ingress)
+          kubectl patch ingress mcp-devops-automation \
+            -n mcp-devops-automation \
+            -p '{"spec":{"rules":[{"host":"*","http":{"paths":[{"path":"/","pathType":"Prefix","backend":{"service":{"name":"mcp-devops-automation-green","port":{"number":80}}}}]}}]}}'
+
+          # Wait and verify
+          sleep 60
+
+          # Delete blue environment
+          helm uninstall mcp-devops-automation-blue -n mcp-devops-automation-blue || true
+
+      - name: Deploy with Canary Strategy
+        if: github.event.inputs.deployment_strategy == 'canary'
+        run: |
+          # Deploy canary (10% traffic)
+          helm upgrade --install mcp-devops-automation-canary ./helm/charts/umbrella \
+            --namespace mcp-devops-automation \
+            --set global.environment=production \
+            --set global.canary=true \
+            --set global.replicaCount=1 \
+            --wait
+
+          # Monitor metrics for 5 minutes
+          echo "Monitoring canary deployment..."
+          sleep 300
+
+          # If healthy, promote to 100%
+          helm upgrade mcp-devops-automation ./helm/charts/umbrella \
+            --namespace mcp-devops-automation \
+            --set global.environment=production \
+            --reuse-values \
+            --wait
+
+      - name: Deploy with Rolling Update (Default)
+        if: github.event.inputs.deployment_strategy == 'rolling' || github.event.inputs.deployment_strategy == ''
+        run: |
+          helm upgrade --install mcp-devops-automation ./helm/charts/umbrella \
+            --namespace mcp-devops-automation \
+            --create-namespace \
+            --set global.environment=production \
+            --wait \
+            --timeout 15m
+
+      - name: Wait for deployment
+        run: |
+          kubectl rollout status deployment -n mcp-devops-automation --timeout=15m
+
+      - name: Run production smoke tests
+        run: |
+          echo "Running production smoke tests..."
+          for service in analyzers calculators generators tools types; do
+            kubectl run test-prod-$service --rm -i --restart=Never \
+              --image=curlimages/curl:latest \
+              -- curl -f http://$service.mcp-devops-automation.svc.cluster.local/health || exit 1
+          done
+
+      - name: Verify production deployment
+        run: |
+          kubectl get pods -n mcp-devops-automation -o wide
+          kubectl get svc -n mcp-devops-automation
+          kubectl top pods -n mcp-devops-automation
+
+      - name: Create rollback point
+        run: |
+          kubectl annotate deployment -n mcp-devops-automation --all \
+            kubernetes.io/change-cause="Deployed at $(date) - Commit: ${{ github.sha }}"
+
+      - name: Notify production deployment
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: 'Production deployment ${{ job.status }} - Version: ${{ github.sha }}'
           webhook_url: ${{ secrets.SLACK_WEBHOOK }}
