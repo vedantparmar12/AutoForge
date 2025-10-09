@@ -11,6 +11,10 @@ import { ArgoCDGenerator } from '../generators/argocd-generator.js';
 import { MonitoringGenerator } from '../generators/monitoring-generator.js';
 import { AnsibleGenerator } from '../generators/ansible-generator.js';
 import { SecurityGenerator } from '../generators/security-generator.js';
+import { DependencyMapper } from '../analyzers/dependency-mapper.js';
+import { AzureGenerator } from '../generators/azure-generator.js';
+import { GCPGenerator } from '../generators/gcp-generator.js';
+import { ZeroConfigDeployer } from './zero-config-deployer.js';
 import type { DevOpsConfig } from '../types/index.js';
 
 export class DevOpsTools {
@@ -24,6 +28,10 @@ export class DevOpsTools {
   private monitoringGenerator = new MonitoringGenerator();
   private ansibleGenerator = new AnsibleGenerator();
   private securityGenerator = new SecurityGenerator();
+  private dependencyMapper = new DependencyMapper();
+  private azureGenerator = new AzureGenerator();
+  private gcpGenerator = new GCPGenerator();
+  private zeroConfigDeployer = new ZeroConfigDeployer();
 
   async analyzeProject(projectPath: string): Promise<CallToolResult> {
     try {
@@ -580,5 +588,235 @@ kubectl delete namespace monitoring
 **Date:** ${new Date().toISOString()}
 **Features:** Helm ✅ | ArgoCD ✅ | Prometheus ✅ | Ansible ✅
 `;
+  }
+
+  // NEW: Service Dependency Mapping
+  async mapDependencies(projectPath: string): Promise<CallToolResult> {
+    try {
+      const analysis = await this.analyzer.analyzeProject(projectPath);
+      const { graph, mermaidDiagram, impactAnalysis } = await this.dependencyMapper.mapDependencies(analysis);
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: true,
+              dependencyGraph: {
+                services: graph.services,
+                dependencies: graph.dependencies,
+                databases: graph.databases,
+                externalServices: graph.externalServices
+              },
+              mermaidDiagram,
+              impactAnalysis: impactAnalysis.map(impact => ({
+                service: impact.service,
+                directDependents: impact.directDependents,
+                indirectDependents: impact.indirectDependents,
+                databases: impact.databases,
+                criticalityScore: impact.criticalityScore,
+                recommendation: impact.recommendation
+              })),
+              summary: {
+                totalServices: graph.services.length,
+                totalDependencies: graph.dependencies.length,
+                criticalServices: impactAnalysis.filter(i => i.criticalityScore >= 80).map(i => i.service),
+                highImpactServices: impactAnalysis.filter(i => i.criticalityScore >= 50).map(i => i.service)
+              }
+            }, null, 2)
+          }
+        ]
+      };
+    } catch (error: any) {
+      return {
+        content: [{ type: 'text', text: `Error mapping dependencies: ${error.message}` }],
+        isError: true
+      };
+    }
+  }
+
+  // NEW: Multi-Cloud Cost Comparison
+  async compareCloudCosts(projectPath: string): Promise<CallToolResult> {
+    try {
+      const analysis = await this.analyzer.analyzeProject(projectPath);
+      const resources = this.calculator.calculateResources(analysis);
+
+      const awsCosts = resources.estimated_cost;
+      const azureCosts = this.azureGenerator.estimateCosts(resources);
+      const gcpCosts = this.gcpGenerator.estimateCosts(resources);
+
+      const comparisonData = [
+        { cloud: 'AWS', ...awsCosts.monthly, currency: awsCosts.currency },
+        { cloud: 'Azure', ...azureCosts.monthly, currency: azureCosts.currency },
+        { cloud: 'GCP', ...gcpCosts.monthly, currency: gcpCosts.currency }
+      ];
+
+      const comparison = comparisonData.sort((a: any, b: any) => a.total - b.total);
+      const cheapest: any = comparison[0];
+      const mostExpensive: any = comparison[comparison.length - 1];
+      const savings = mostExpensive.total - cheapest.total;
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: true,
+              comparison,
+              recommendation: {
+                cloud: cheapest.cloud,
+                monthlyCost: cheapest.total,
+                savings: `Save $${savings.toFixed(2)}/month (${((savings / mostExpensive.total) * 100).toFixed(1)}%) vs ${mostExpensive.cloud}`,
+                currency: cheapest.currency
+              }
+            }, null, 2)
+          }
+        ]
+      };
+    } catch (error: any) {
+      return {
+        content: [{ type: 'text', text: `Error comparing cloud costs: ${error.message}` }],
+        isError: true
+      };
+    }
+  }
+
+  // NEW: Deploy to Azure
+  async deployToAzure(config: DevOpsConfig): Promise<CallToolResult> {
+    try {
+      const analysis = await this.analyzer.analyzeProject(config.projectPath);
+      const resources = this.calculator.calculateResources(analysis);
+
+      const terraformFiles = this.azureGenerator.generateAzureTerraform(
+        analysis,
+        resources,
+        config.awsRegion || 'eastus' // reuse awsRegion param
+      );
+
+      const outputDir = config.outputDir || join(config.projectPath, 'azure-deployment');
+      await mkdir(outputDir, { recursive: true });
+      await mkdir(join(outputDir, 'terraform'), { recursive: true });
+
+      for (const [filename, content] of Object.entries(terraformFiles)) {
+        await writeFile(join(outputDir, 'terraform', filename), content);
+      }
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: true,
+              cloud: 'Azure',
+              outputDir,
+              files: Object.keys(terraformFiles),
+              costs: this.azureGenerator.estimateCosts(resources),
+              nextSteps: [
+                '1. cd terraform/',
+                '2. terraform init',
+                '3. terraform apply',
+                '4. az aks get-credentials --name <cluster-name> --resource-group <rg-name>',
+                '5. kubectl apply -f k8s/manifests.yaml'
+              ]
+            }, null, 2)
+          }
+        ]
+      };
+    } catch (error: any) {
+      return {
+        content: [{ type: 'text', text: `Error deploying to Azure: ${error.message}` }],
+        isError: true
+      };
+    }
+  }
+
+  // NEW: Deploy to GCP
+  async deployToGCP(config: DevOpsConfig): Promise<CallToolResult> {
+    try {
+      const analysis = await this.analyzer.analyzeProject(config.projectPath);
+      const resources = this.calculator.calculateResources(analysis);
+
+      const terraformFiles = this.gcpGenerator.generateGCPTerraform(
+        analysis,
+        resources,
+        config.awsRegion || 'us-central1' // reuse awsRegion param
+      );
+
+      const outputDir = config.outputDir || join(config.projectPath, 'gcp-deployment');
+      await mkdir(outputDir, { recursive: true });
+      await mkdir(join(outputDir, 'terraform'), { recursive: true });
+
+      for (const [filename, content] of Object.entries(terraformFiles)) {
+        await writeFile(join(outputDir, 'terraform', filename), content);
+      }
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: true,
+              cloud: 'GCP',
+              outputDir,
+              files: Object.keys(terraformFiles),
+              costs: this.gcpGenerator.estimateCosts(resources),
+              nextSteps: [
+                '1. Set GCP_PROJECT_ID in terraform.tfvars',
+                '2. cd terraform/',
+                '3. terraform init',
+                '4. terraform apply',
+                '5. gcloud container clusters get-credentials <cluster-name> --region <region>',
+                '6. kubectl apply -f k8s/manifests.yaml'
+              ]
+            }, null, 2)
+          }
+        ]
+      };
+    } catch (error: any) {
+      return {
+        content: [{ type: 'text', text: `Error deploying to GCP: ${error.message}` }],
+        isError: true
+      };
+    }
+  }
+
+  // NEW: Zero-Config Deployment
+  async deployNow(projectPath: string, options?: {
+    cloud?: 'aws' | 'azure' | 'gcp';
+    region?: string;
+    dryRun?: boolean;
+  }): Promise<CallToolResult> {
+    try {
+      const result = await this.zeroConfigDeployer.deployNow(projectPath, {
+        ...options,
+        dryRun: options?.dryRun !== false, // Default to dry run for safety
+      });
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify({
+              success: result.success,
+              cloud: options?.cloud || 'auto-detected',
+              deploymentUrl: result.deploymentUrl,
+              duration: `${(result.duration / 1000).toFixed(2)} seconds`,
+              steps: result.steps,
+              costs: result.costs,
+              message: result.success
+                ? options?.dryRun !== false
+                  ? '✅ DRY RUN completed successfully - Set dryRun:false to actually deploy'
+                  : '🎉 Deployment completed successfully!'
+                : '❌ Deployment failed - Check steps for details'
+            }, null, 2)
+          }
+        ]
+      };
+    } catch (error: any) {
+      return {
+        content: [{ type: 'text', text: `Error in zero-config deployment: ${error.message}` }],
+        isError: true
+      };
+    }
   }
 }
