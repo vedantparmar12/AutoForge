@@ -130,38 +130,7 @@ graph TB
     N --> P
     O --> P
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                 MCP DevOps Automation Server v2.0                │
-├──────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌──────────────┐  ┌───────────────┐  ┌──────────────────┐     │
-│  │   Project    │  │   Resource    │  │   Dependency     │     │
-│  │   Analyzer   │→ │  Calculator   │  │     Mapper       │ NEW │
-│  └──────────────┘  └───────────────┘  └──────────────────┘     │
-│         ↓                  ↓                      ↓              │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │                   Generators                             │  │
-│  ├──────────────────────────────────────────────────────────┤  │
-│  │  • Kubernetes (Deployments, HPA, PDB, Ingress)          │  │
-│  │  • Terraform (AWS, Azure, GCP) ← NEW Multi-Cloud        │  │
-│  │  • Helm Charts (6+ charts per project)                  │  │
-│  │  • ArgoCD GitOps (automated deployment)                 │  │
-│  │  • CI/CD Pipelines (GitHub Actions, GitLab)             │  │
-│  │  • Monitoring (Prometheus, Grafana, dashboards)         │  │
-│  │  • Security (Trivy, Falco, Kyverno, Vault)              │  │
-│  │  • Ansible Playbooks (alternative orchestration)        │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│         ↓                                                        │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │         Zero-Config Deployer ← NEW                       │  │
-│  │  (Auto-detect → Generate → Deploy in 5 minutes)          │  │
-│  └──────────────────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────────────┘
-                             ↓
-         ┌───────────────────────────────────────┐
-         │  AWS EKS  │  Azure AKS  │  GCP GKE   │ ← Multi-Cloud
-         └───────────────────────────────────────┘
-```
+
 
 ---
 
@@ -486,6 +455,48 @@ mcp-devops-automation/
 └── package.json
 ```
 
+``` mermaid
+ graph TB
+    subgraph System["MCP DevOps Automation Server v2.0"]
+        PA[Project Analyzer]
+        RC[Resource Calculator]
+        DM[Dependency Mapper<br/>NEW]
+        
+        PA --> Gen
+        RC --> Gen
+        DM --> Gen
+        
+        subgraph Gen["Generators"]
+            K8s["• Kubernetes (Deployments, HPA, PDB, Ingress)"]
+            TF["• Terraform (AWS, Azure, GCP) - NEW Multi-Cloud"]
+            Helm["• Helm Charts (6+ charts per project)"]
+            Argo["• ArgoCD GitOps (automated deployment)"]
+            CI["• CI/CD Pipelines (GitHub Actions, GitLab)"]
+            Mon["• Monitoring (Prometheus, Grafana, dashboards)"]
+            Sec["• Security (Trivy, Falco, Kyverno, Vault)"]
+            Ans["• Ansible Playbooks (alternative orchestration)"]
+        end
+        
+        Gen --> ZCD[Zero-Config Deployer - NEW<br/>Auto-detect → Generate → Deploy in 5 minutes]
+    end
+    
+    ZCD --> Cloud
+    
+    subgraph Cloud["Multi-Cloud Deployment"]
+        EKS[AWS EKS]
+        AKS[Azure AKS]
+        GKE[GCP GKE]
+    end
+    
+    style System fill:#e1f5ff,stroke:#0066cc,stroke-width:3px
+    style Gen fill:#fff4e6,stroke:#ff9800,stroke-width:2px
+    style ZCD fill:#e8f5e9,stroke:#4caf50,stroke-width:2px
+    style Cloud fill:#f3e5f5,stroke:#9c27b0,stroke-width:2px
+    style DM fill:#fff9c4,stroke:#fbc02d,stroke-width:2px
+    style TF fill:#fff9c4,stroke:#fbc02d,stroke-width:2px
+    style ZCD fill:#fff9c4,stroke:#fbc02d,stroke-width:2px
+
+```
 ---
 
 ## 🧪 Testing
