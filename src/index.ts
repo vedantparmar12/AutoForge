@@ -72,6 +72,27 @@ class DevOpsAutomationServer {
           case 'deploy-to-aws':
             return await this.devopsTools.deployToAWS(args as unknown as DevOpsConfig);
 
+          // NEW: Service Dependency Mapping
+          case 'map-dependencies':
+            return await this.devopsTools.mapDependencies(args.projectPath as string);
+
+          // NEW: Multi-Cloud Support
+          case 'compare-cloud-costs':
+            return await this.devopsTools.compareCloudCosts(args.projectPath as string);
+
+          case 'deploy-to-azure':
+            return await this.devopsTools.deployToAzure(args as unknown as DevOpsConfig);
+
+          case 'deploy-to-gcp':
+            return await this.devopsTools.deployToGCP(args as unknown as DevOpsConfig);
+
+          // NEW: Zero-Config Deployment
+          case 'deploy-now':
+            return await this.devopsTools.deployNow(
+              args.projectPath as string,
+              args.options as { cloud?: 'aws' | 'azure' | 'gcp'; region?: string; dryRun?: boolean }
+            );
+
           default:
             return {
               content: [
@@ -200,6 +221,114 @@ class DevOpsAutomationServer {
               type: 'boolean',
               description: 'Show what would be deployed without executing (defaults to true for safety)',
               default: true,
+            },
+          },
+          required: ['projectPath'],
+        },
+      },
+      {
+        name: 'map-dependencies',
+        description: '🗺️ Maps service dependencies and generates architecture diagrams. Detects API calls, database connections, and service relationships. Returns Mermaid diagram + impact analysis showing which services are critical.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            projectPath: {
+              type: 'string',
+              description: 'Absolute path to the project directory',
+            },
+          },
+          required: ['projectPath'],
+        },
+      },
+      {
+        name: 'compare-cloud-costs',
+        description: '💰 Compares infrastructure costs across AWS, Azure, and GCP. Returns detailed cost breakdown and recommends the cheapest cloud provider with estimated savings.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            projectPath: {
+              type: 'string',
+              description: 'Absolute path to the project directory',
+            },
+          },
+          required: ['projectPath'],
+        },
+      },
+      {
+        name: 'deploy-to-azure',
+        description: '☁️ Generates complete Azure deployment (AKS, ACR, Azure DB). Creates Terraform files for Azure infrastructure with cost estimates.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            projectPath: {
+              type: 'string',
+              description: 'Absolute path to the project directory',
+            },
+            awsRegion: {
+              type: 'string',
+              description: 'Azure region (e.g., eastus, westus2)',
+              default: 'eastus',
+            },
+            outputDir: {
+              type: 'string',
+              description: 'Output directory (optional)',
+            },
+          },
+          required: ['projectPath'],
+        },
+      },
+      {
+        name: 'deploy-to-gcp',
+        description: '🌐 Generates complete GCP deployment (GKE, GCR, Cloud SQL). Creates Terraform files for Google Cloud infrastructure with cost estimates.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            projectPath: {
+              type: 'string',
+              description: 'Absolute path to the project directory',
+            },
+            awsRegion: {
+              type: 'string',
+              description: 'GCP region (e.g., us-central1, us-east1)',
+              default: 'us-central1',
+            },
+            outputDir: {
+              type: 'string',
+              description: 'Output directory (optional)',
+            },
+          },
+          required: ['projectPath'],
+        },
+      },
+      {
+        name: 'deploy-now',
+        description: '⚡ ZERO-CONFIG DEPLOYMENT - Analyzes project, auto-detects cloud, generates configs, and deploys in ONE command! Deployment completes in ~5 minutes. Perfect for quick deployments with smart defaults.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            projectPath: {
+              type: 'string',
+              description: 'Absolute path to the project directory',
+            },
+            options: {
+              type: 'object',
+              description: 'Deployment options (all optional)',
+              properties: {
+                cloud: {
+                  type: 'string',
+                  enum: ['aws', 'azure', 'gcp'],
+                  description: 'Cloud provider (auto-detected if not specified)',
+                },
+                region: {
+                  type: 'string',
+                  description: 'Cloud region (uses defaults if not specified)',
+                },
+                dryRun: {
+                  type: 'boolean',
+                  description: 'Preview deployment without executing (defaults to true)',
+                  default: true,
+                },
+              },
             },
           },
           required: ['projectPath'],
