@@ -26,6 +26,18 @@ resource "azurerm_postgresql_flexible_server_database" "main" {
   charset   = "utf8"
 }
 
+# Azure Cache for Redis
+resource "azurerm_redis_cache" "main" {
+  name                = "mcp-devops-automation-redis"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  capacity            = 0
+  family              = "C"
+  sku_name            = "Basic"
+  enable_non_ssl_port = false
+  minimum_tls_version = "1.2"
+}
+
 # Random password for databases
 resource "random_password" "db_password" {
   length  = 16

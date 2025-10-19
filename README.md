@@ -4,9 +4,19 @@
 
 An intelligent MCP (Model Context Protocol) server that analyzes your project, automatically determines optimal infrastructure requirements, and generates a complete DevOps setup with **multi-cloud support** (AWS, Azure, GCP), dependency mapping, and **zero-config deployment**.
 
-## ⭐ NEW in v2.0!
+## ⭐ NEW in v3.0!
 
-🎉 **5 Game-Changing Features Added:**
+🎉 **Major Update - Complete CLI with Interactive Mode:**
+- **🎯 Interactive CLI** - User-friendly guided interface with inquirer
+- **🐳 Docker Compose Generator** - Complete local development setup
+- **⚡ Preflight Checks** - Validate environment before deployment
+- **📜 Deployment History** - Track all deployments with rollback capabilities
+- **🔄 Rollback Manager** - Safe deployment rollbacks with recovery
+- **💰 Cost Budget System** - Real-time cost monitoring with alerts
+- **🔧 Multi-Environment Manager** - Manage dev/staging/prod environments
+- **📊 Comprehensive Testing** - Full test suite for all features
+
+### Previous v2.0 Features:
 - **🗺️ Service Dependency Mapping** - Auto-generate architecture diagrams + impact analysis
 - **💰 Multi-Cloud Cost Comparison** - Compare AWS vs Azure vs GCP pricing
 - **☁️ Azure Deployment** - Complete AKS, ACR, Azure DB support
@@ -170,7 +180,52 @@ node test-new-features.js
 npm start
 ```
 
-#### 4. Configure MCP Server
+### Using the CLI
+
+#### Interactive Mode (Recommended)
+
+```bash
+# Start interactive CLI
+devops-cli interactive
+# or
+devops-cli i
+```
+
+The interactive CLI provides:
+- 🎯 **Guided workflows** - Step-by-step prompts
+- 🚀 **Quick deployment** - One-click deploy to any cloud
+- 🐳 **Local development** - Generate docker-compose files
+- 💰 **Cost management** - Budget tracking and alerts
+- 📜 **History tracking** - View and rollback deployments
+- 🔧 **Environment management** - Manage dev/staging/prod
+
+#### Command Line Usage
+
+```bash
+# Analyze project
+devops-cli analyze /path/to/project
+
+# Deploy to cloud
+devops-cli deploy /path/to/project --cloud aws --environment dev
+
+# Setup local development
+devops-cli local-setup /path/to/project
+
+# View deployment history
+devops-cli history --environment prod --limit 10
+
+# Rollback deployment
+devops-cli rollback dep-1234567890-abc123 --environment prod
+
+# Check cost budget
+devops-cli cost-budget --check /path/to/project
+```
+
+**📖 See [CLI-GUIDE.md](CLI-GUIDE.md) for complete CLI documentation**
+
+### Using in Your IDE
+
+#### Cursor / VS Code with MCP Extension
 
 **For Claude Desktop** (`claude_desktop_config.json`):
 
