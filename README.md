@@ -1,4 +1,4 @@
-# MCP DevOps Automation 🚀
+# AutoForge - DevOps Configuration Generator
 
 **Automated DevOps lifecycle creation for any project - Multi-Cloud deployment with AI-powered optimization**
 
@@ -79,39 +79,68 @@ Deploy to **any cloud provider**:
 
 ## 🏗️ Architecture
 
+### High-Level Architecture
+
+```mermaid
+graph TB
+    subgraph "Client Layer"
+        A[AI Assistant/Claude]
+        B[Developer CLI]
+    end
+    
+    subgraph "MCP Server Layer"
+        C[AutoForge MCP Server]
+        D[Tool Registry]
+    end
+    
+    subgraph "Analysis Layer"
+        E[Project Analyzer]
+        F[Resource Calculator]
+        G[Security Analyzer]
+    end
+    
+    subgraph "Generator Layer"
+        H[Kubernetes Generator]
+        I[Terraform Generator]
+        J[Helm Generator]
+        K[CI/CD Generator]
+        L[Ansible Generator]
+        M[ArgoCD Generator]
+        N[Monitoring Generator]
+        O[Security Generator]
+    end
+    
+    subgraph "Output Layer"
+        P[YAML Configurations]
+        Q[Terraform Files]
+        R[Helm Charts]
+        S[CI/CD Pipelines]
+    end
+    
+    A --> C
+    B --> C
+    C --> D
+    D --> E
+    D --> F
+    D --> G
+    E --> H
+    E --> I
+    E --> J
+    F --> K
+    E --> L
+    E --> M
+    E --> N
+    G --> O
+    H --> P
+    I --> Q
+    J --> R
+    K --> S
+    L --> S
+    M --> P
+    N --> P
+    O --> P
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                 MCP DevOps Automation Server v2.0                │
-├──────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌──────────────┐  ┌───────────────┐  ┌──────────────────┐     │
-│  │   Project    │  │   Resource    │  │   Dependency     │     │
-│  │   Analyzer   │→ │  Calculator   │  │     Mapper       │ NEW │
-│  └──────────────┘  └───────────────┘  └──────────────────┘     │
-│         ↓                  ↓                      ↓              │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │                   Generators                             │  │
-│  ├──────────────────────────────────────────────────────────┤  │
-│  │  • Kubernetes (Deployments, HPA, PDB, Ingress)          │  │
-│  │  • Terraform (AWS, Azure, GCP) ← NEW Multi-Cloud        │  │
-│  │  • Helm Charts (6+ charts per project)                  │  │
-│  │  • ArgoCD GitOps (automated deployment)                 │  │
-│  │  • CI/CD Pipelines (GitHub Actions, GitLab)             │  │
-│  │  • Monitoring (Prometheus, Grafana, dashboards)         │  │
-│  │  • Security (Trivy, Falco, Kyverno, Vault)              │  │
-│  │  • Ansible Playbooks (alternative orchestration)        │  │
-│  └──────────────────────────────────────────────────────────┘  │
-│         ↓                                                        │
-│  ┌──────────────────────────────────────────────────────────┐  │
-│  │         Zero-Config Deployer ← NEW                       │  │
-│  │  (Auto-detect → Generate → Deploy in 5 minutes)          │  │
-│  └──────────────────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────────────┘
-                             ↓
-         ┌───────────────────────────────────────┐
-         │  AWS EKS  │  Azure AKS  │  GCP GKE   │ ← Multi-Cloud
-         └───────────────────────────────────────┘
-```
+
 
 ---
 
@@ -127,18 +156,22 @@ Deploy to **any cloud provider**:
 - Terraform 1.0+ (for infrastructure deployment)
 - kubectl 1.33+ (for Kubernetes management)
 
-### Installation
+### Installation Steps
+
+#### 1. Clone the Repository
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-org/mcp-devops-automation.git
-cd mcp-devops-automation
+git clone https://github.com/vedantparmar12/AutoForge.git
+cd AutoForge
+```
 
-# Install dependencies
+#### 2. Install Dependencies
+
+```bash
 npm install
+```
 
-# Build the project
-npm run build
+#### 3. Build the Project
 
 # Test all features
 node test-new-features.js
@@ -194,12 +227,12 @@ devops-cli cost-budget --check /path/to/project
 
 #### Cursor / VS Code with MCP Extension
 
-Add to your MCP configuration (`.cursor/mcp/config.json` or VS Code settings):
+**For Claude Desktop** (`claude_desktop_config.json`):
 
 ```json
 {
   "mcpServers": {
-    "devops-automation": {
+    "autoforge": {
       "command": "node",
       "args": ["/path/to/mcp-devops-automation/dist/index.js"],
       "description": "Multi-cloud DevOps automation with dependency mapping"
@@ -477,6 +510,48 @@ mcp-devops-automation/
 └── package.json
 ```
 
+``` mermaid
+ graph TB
+    subgraph System["MCP DevOps Automation Server v2.0"]
+        PA[Project Analyzer]
+        RC[Resource Calculator]
+        DM[Dependency Mapper<br/>NEW]
+        
+        PA --> Gen
+        RC --> Gen
+        DM --> Gen
+        
+        subgraph Gen["Generators"]
+            K8s["• Kubernetes (Deployments, HPA, PDB, Ingress)"]
+            TF["• Terraform (AWS, Azure, GCP) - NEW Multi-Cloud"]
+            Helm["• Helm Charts (6+ charts per project)"]
+            Argo["• ArgoCD GitOps (automated deployment)"]
+            CI["• CI/CD Pipelines (GitHub Actions, GitLab)"]
+            Mon["• Monitoring (Prometheus, Grafana, dashboards)"]
+            Sec["• Security (Trivy, Falco, Kyverno, Vault)"]
+            Ans["• Ansible Playbooks (alternative orchestration)"]
+        end
+        
+        Gen --> ZCD[Zero-Config Deployer - NEW<br/>Auto-detect → Generate → Deploy in 5 minutes]
+    end
+    
+    ZCD --> Cloud
+    
+    subgraph Cloud["Multi-Cloud Deployment"]
+        EKS[AWS EKS]
+        AKS[Azure AKS]
+        GKE[GCP GKE]
+    end
+    
+    style System fill:#e1f5ff,stroke:#0066cc,stroke-width:3px
+    style Gen fill:#fff4e6,stroke:#ff9800,stroke-width:2px
+    style ZCD fill:#e8f5e9,stroke:#4caf50,stroke-width:2px
+    style Cloud fill:#f3e5f5,stroke:#9c27b0,stroke-width:2px
+    style DM fill:#fff9c4,stroke:#fbc02d,stroke-width:2px
+    style TF fill:#fff9c4,stroke:#fbc02d,stroke-width:2px
+    style ZCD fill:#fff9c4,stroke:#fbc02d,stroke-width:2px
+
+```
 ---
 
 ## 🧪 Testing
@@ -498,20 +573,31 @@ node test-new-features.js
 
 ---
 
-## 🛠️ Development
+---
 
-```bash
-# Install dependencies
-npm install
+## 📖 Usage Examples
 
-# Run in development mode
-npm run dev
+### Example 1: Analyze a Node.js Project
 
 # Run linter
 npm run lint
 
-# Format code
-npm run format
+**Output**:
+```json
+{
+  "projectName": "express-api",
+  "framework": "express",
+  "version": "4.18.0",
+  "serviceType": "api",
+  "hasDatabase": true,
+  "databaseType": "mongodb",
+  "port": 3000,
+  "buildCommand": "npm run build",
+  "dependencies": {
+    "production": 15,
+    "development": 8
+  }
+}
 ```
 
 ---
@@ -560,13 +646,16 @@ npm run format
 
 ## 🤝 Contributing
 
-Contributions welcome! Please:
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+### Development Workflow
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+2. Create a feature branch
+3. Make your changes
+4. Add tests
+5. Run linting and tests
+6. Submit a pull request
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
@@ -574,7 +663,19 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) file for details
+- Follow TypeScript best practices
+- Write comprehensive tests
+- Document all functions
+- Use meaningful variable names
+- Follow existing code style
+
+---
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
 
 ---
 
